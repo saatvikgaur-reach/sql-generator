@@ -1,0 +1,77 @@
+'''
+"""
+### Instructions:
+Your task is to convert a question about trucking events into a ready-to-run SQL query for DuckDB.
+
+**Core Rules:**
+-   **Literal Translation:** Answer *only* what's asked. No adding, assuming, or inferring.
+-   **No Extra Filters/Joins:** Only WHERE/HAVING or JOINs if explicitly in the question.
+-   **Column Names:** Use exact column names from the schema {column_headers}. No caps, use underscores for spaces. There are no columns besides those in the defined schema.
+-   **Ratios:** Numerator must be `CAST(numerator AS FLOAT)`.
+-   **Dates/Times:**
+    -   Date format: `MM/DD/YYYY`
+    -   Time format: `HH:MM:SS AM/PM`
+    -   Combine to timestamp: `STRPTIME(date_col || ' ' || time_col, '%m/%d/%Y %I:%M:%S %p')`
+-   **"Service Provider"**: Refers to `service_center` column.
+-   **"Most Common"**: Group by the column, order by count DESC.
+-   **Casing**: Assume all categorical values (e.g. 'completed', 'yes', 'false') are all lowercase for case insensitivity.
+
+**Understanding the Data:**
+{data_dictionary} explains all column headers and their relationships. Use it.
+
+**Chain-of-Thought Examples:**
+
+**Question 1: What is the average time for an event between creation and repair?**
+**Thought Process:**
+1. Identify relevant columns: created_at_edt_date, created_at_edt_time, repaired_at_date, repaired_at_time.
+2. Combine date and time: Use STRPTIME to convert the separate date and time columns into full timestamps for both creation and repair.
+3. Calculate duration: Subtract the creation timestamp from the repair timestamp to get the duration.
+4. Convert to minutes: Divide the duration (which is in seconds) by 60 to get minutes.
+5. Calculate average: Apply the AVG() aggregate function to the calculated durations.
+**SQL Query for Q1:**
+```sql
+SELECT
+    AVG(EXTRACT(EPOCH FROM (STRPTIME(events.repaired_at_date || ' ' || events.repaired_at_time, '%m/%d/%Y %I:%M:%S %p') - STRPTIME(events.created_at_edt_date || ' ' || events.created_at_edt_time, '%m/%d/%Y %I:%M:%S %p'))) / 60) AS average_time_minutes
+FROM
+    events;
+```
+**Question 2: What is the most common kind of breakdown across all the events?**
+**Thought Process:**
+1. Identify relevant column: breakdown_notes (to identify the type of breakdown).
+2. Count occurrences: Use COUNT(*) to count how many times each breakdown_notes entry appears.
+3. Group: Group the results by breakdown_notes to get counts for each distinct type.
+4. Order: Order the results by the count in descending order to bring the most frequent to the top.
+5. Limit: Use LIMIT 1 to retrieve only the single most common breakdown type.
+
+**SQL Query for Q2:**
+```sql
+SELECT
+    events.breakdown_notes,
+    COUNT(*) AS breakdown_count
+FROM
+    events
+GROUP BY
+    events.breakdown_notes
+ORDER BY
+    breakdown_count DESC
+LIMIT 1;
+```
+**Question 3: Provide a breakdown of the count of distinct events for each equipment type.**
+**Thought Process:**
+1. Identify relevant columns: equipment_type (for grouping), event_code (to identify distinct events).
+2. Count distinct events: Use COUNT(DISTINCT event_code) to count unique event codes for each group.
+3. Group: Group the results by equipment_type to aggregate counts for each equipment type.
+
+**SQL Query for Q3:**
+```sql
+SELECT
+    events.equipment_type,
+    COUNT(DISTINCT events.event_code) AS event_count
+FROM
+    events
+GROUP BY
+    events.equipment_type;
+```
+Abiding by the above rules and examples, answer the following question:
+{question}
+'''
